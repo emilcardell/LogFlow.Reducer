@@ -1,4 +1,4 @@
-LogFlow.MapReducer
+LogFlow.Reducer
 ==================
 
-A tiny map reduce framework for log files based on a time series approach (each hour, day etc)
+A tiny reduce framework for log files based on a time series approach (each hour, day etc) in elasticsearch
