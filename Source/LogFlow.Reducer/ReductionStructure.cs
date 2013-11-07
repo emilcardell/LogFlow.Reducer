@@ -13,7 +13,7 @@ namespace LogFlow.Reducer
 			TimeInterval = TimeInterval.Day;
 			Host = "localhost";
 			Port = 9200;
-			IndexNameFormat = @"\l\o\g\f\l\o\w\-yyyyMM";
+			IndexNameFormat = @"\R\e\d\u\c\t\t\i\o\n\-yyyyMM";
 			ConnectionLimit = 5;
 		}
 		public TimeInterval TimeInterval { get; set; }
@@ -29,8 +29,20 @@ namespace LogFlow.Reducer
 	
 	public class ReductionStructure<T>
 	{
-		private ReductionSettings Settings;
-		public Func<ReductionSettings> SetSettings { get; set; }
+		private ReductionSettings Settings = new ReductionSettings();
+
+		public ReductionStructure()
+		{
+		}
+
+		public ReductionStructure(Action<ReductionSettings> configureSettings)
+		{
+			configureSettings(Settings);
+		}
+
+
+
+
 		public Func<JObject, Dictionary<string, JObjectAndHelper<T>>, Dictionary<string, JObjectAndHelper<T>>> Reducer { get; set; }
 		public Func<Dictionary<string, JObjectAndHelper<T>>, Dictionary<string, JObjectAndHelper<T>>> Combiner { get; set; }
 
@@ -43,27 +55,6 @@ namespace LogFlow.Reducer
 		public void CombineResultInto(Func<Dictionary<string, JObjectAndHelper<T>>, Dictionary<string, JObjectAndHelper<T>>> combiner)
 		{
 			Combiner = combiner;
-		}
-
-		public void Start()
-		{
-			if(SetSettings != null)
-				Settings = SetSettings();
-
-			var result = new Dictionary<string, JObject>();
-			Parallel.ForEach(new List<JObject>(), () => { return new Dictionary<string, JObject>(); },
-				(record, loopControl, localDictionary) =>
-				{
-					return localDictionary;
-				},
-				(localDictionary) =>
-				{
-					lock(result)
-					{
-
-					}
-				});
-
 		}
 	}
 }

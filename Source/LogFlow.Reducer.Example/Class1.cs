@@ -22,6 +22,9 @@ namespace LogFlow.Reducer.Example
 
 	public class Reducer
 	{
-		
+		public string Reduce(string inputData, string currentReuslt)
+		{
+			
+		}
 	}
 }
