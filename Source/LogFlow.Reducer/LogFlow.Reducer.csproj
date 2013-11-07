@@ -32,6 +32,9 @@
     <WarningLevel>4</WarningLevel>
   </PropertyGroup>
   <ItemGroup>
+    <Reference Include="Nest">
+      <HintPath>..\..\binaries\Nest\Nest.dll</HintPath>
+    </Reference>
     <Reference Include="Newtonsoft.Json">
       <HintPath>..\..\packages\Newtonsoft.Json.5.0.8\lib\net45\Newtonsoft.Json.dll</HintPath>
     </Reference>
@@ -55,6 +58,8 @@
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="ReducerEngine.cs" />
     <Compile Include="Reduction.cs" />
+    <Compile Include="ReductionBase.cs" />
+    <Compile Include="ReductionBuilder.cs" />
     <Compile Include="ReductionStructure.cs" />
     <Compile Include="TimeInterval.cs" />
   </ItemGroup>

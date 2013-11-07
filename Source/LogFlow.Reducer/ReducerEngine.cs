@@ -44,14 +44,13 @@ namespace LogFlow.Reducer
 
 			Task.WaitAll(reductionBuilder.Reductions.Select(x => Task.Run(() => x.Start())).ToArray());
 
-			if(Config.EnableNancyHealthModule)
-			{
-				Log.Info("Starting Nancy health module");
-				_nancyHost = new NancyHost(new Uri(Config.NancyHostUrl));
-				_nancyHost.Start();
-				Log.Info("Started Nancy health module on " + Config.NancyHostUrl);
-			}
-
+			//if(Config.EnableNancyHealthModule)
+			//{
+			//	Log.Info("Starting Nancy health module");
+			//	_nancyHost = new NancyHost(new Uri(Config.NancyHostUrl));
+			//	_nancyHost.Start();
+			//	Log.Info("Started Nancy health module on " + Config.NancyHostUrl);
+			//}
 
 
 			return true;
