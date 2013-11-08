@@ -13,7 +13,7 @@ namespace LogFlow.Reducer
 			TimeInterval = TimeInterval.Day;
 			Host = "localhost";
 			Port = 9200;
-			IndexNameFormat = @"\R\e\d\u\c\t\t\i\o\n\-yyyyMM";
+			IndexNameFormat = @"\R\e\d\u\c\t\t\i\o\n\";
 			ConnectionLimit = 5;
 		}
 		public TimeInterval TimeInterval { get; set; }
@@ -26,10 +26,10 @@ namespace LogFlow.Reducer
 		public string IndexNameFormat { get; set; }
 
 	}
-	
-	public class ReductionStructure<T>
+
+	public class ReductionStructure<TIn, TOut, THelp>
 	{
-		private ReductionSettings Settings = new ReductionSettings();
+		private readonly ReductionSettings Settings = new ReductionSettings();
 
 		public ReductionStructure()
 		{
@@ -40,19 +40,16 @@ namespace LogFlow.Reducer
 			configureSettings(Settings);
 		}
 
+		public Func<JObject, Dictionary<string, ReductionResultData<TOut, THelp>>, Dictionary<string, ReductionResultData<TOut, THelp>>> Reducer { get; set; }
+		public Func<Dictionary<string, ReductionResultData<TOut, THelp>>, Dictionary<string, ReductionResultData<TOut, THelp>>> Combiner { get; set; }
 
-
-
-		public Func<JObject, Dictionary<string, JObjectAndHelper<T>>, Dictionary<string, JObjectAndHelper<T>>> Reducer { get; set; }
-		public Func<Dictionary<string, JObjectAndHelper<T>>, Dictionary<string, JObjectAndHelper<T>>> Combiner { get; set; }
-
-		public ReductionStructure<T> ReduceIntputWith(Func<JObject, Dictionary<string, JObjectAndHelper<T>>, Dictionary<string, JObjectAndHelper<T>>> reducer)
+		public ReductionStructure<TIn, TOut, THelp> ReduceIntputWith(Func<JObject, Dictionary<string, ReductionResultData<TOut, THelp>>, Dictionary<string, ReductionResultData<TOut, THelp>>> reducer)
 		{
 			Reducer = reducer;
 			return this;
 		}
 
-		public void CombineResultInto(Func<Dictionary<string, JObjectAndHelper<T>>, Dictionary<string, JObjectAndHelper<T>>> combiner)
+		public void CombineResultInto(Func<Dictionary<string, ReductionResultData<TOut, THelp>>, Dictionary<string, ReductionResultData<TOut, THelp>>> combiner)
 		{
 			Combiner = combiner;
 		}
