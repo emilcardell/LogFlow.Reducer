@@ -54,6 +54,7 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="ElasticSearchFields.cs" />
+    <Compile Include="ReductionPeriod.cs" />
     <Compile Include="ReductionResultData.cs" />
     <Compile Include="Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
@@ -61,6 +62,7 @@
     <Compile Include="Reduction.cs" />
     <Compile Include="ReductionBase.cs" />
     <Compile Include="ReductionBuilder.cs" />
+    <Compile Include="ReductionSettings.cs" />
     <Compile Include="ReductionStructure.cs" />
     <Compile Include="TimeInterval.cs" />
   </ItemGroup>
