@@ -2,7 +2,6 @@
 using System.Collections.Generic;
 using System.Threading.Tasks;
 using Nest;
-using Newtonsoft.Json.Linq;
 using NLog;
 
 namespace LogFlow.Reducer
@@ -10,57 +9,78 @@ namespace LogFlow.Reducer
 	public abstract class Reduction<TIn, TOut, THelp> : IReduction where TIn : class  
 	{
 		private static readonly Logger Log = LogManager.GetCurrentClassLogger();
-		private static ReductionStructure<TIn, TOut, THelp> reductionStructure = new ReductionStructure<TIn, TOut, THelp>();
+		private static ReductionStructure<TIn, TOut, THelp> _reductionStructure = new ReductionStructure<TIn, TOut, THelp>();
 		
 		protected ReductionStructure<TIn, TOut, THelp> CreateReductionWithSettings(Action<ReductionSettings> configureSettings)
 		{
-			return new ReductionStructure<TIn, TOut, THelp>(configureSettings);
+			_reductionStructure = new ReductionStructure<TIn, TOut, THelp>(configureSettings);
+			return _reductionStructure;
 		}
 
 		protected ReductionStructure<TIn, TOut, THelp> CreateReduction()
 		{
-			return new ReductionStructure<TIn, TOut, THelp>();
+			_reductionStructure = new ReductionStructure<TIn, TOut, THelp>();
+			return _reductionStructure;
 		}
 
 		private ElasticClient _client;
 		private RawElasticClient _rawClient;
-		
+		private Dictionary<string, ReductionResultData<TOut, THelp>> _result = new Dictionary<string, ReductionResultData<TOut, THelp>>();
+
 		public void Start()
 		{
 			// Load a unit full of data from Elastic Search
-			var clientSettings = new ConnectionSettings(new Uri(string.Format("http://{0}:{1}", Settings.Host, configuration.Port)));
+			var clientSettings = new ConnectionSettings(new Uri(string.Format("http://{0}:{1}", _reductionStructure.Settings.Host, _reductionStructure.Settings.Port)));
 			_rawClient = new RawElasticClient(clientSettings);
 			_client = new ElasticClient(clientSettings);
 
-			var blahonga = _client.Search<TIn> (
+			ReductionPeriod period = LoadPeriod(_reductionStructure.Settings);
+			
+			var logLines = _client.Search<TIn> (
 										s => s.Skip(0).Take(10).Query(q =>
 																 q.Range(r =>
 																				 r.OnField(ElasticSearchFields.Timestamp)
-																				  .From(dateToAggregate)
-																				  .To(dateToAggregate.AddDays(1))
+																				  .From(period.From)
+																				  .To(period.To)
 																				  .ToExclusive()
 																		 )));
-			_rawClient.SearchPost()
+			
 
+			if(!period.IsCurrent)
+				_result = new Dictionary<string, ReductionResultData<TOut, THelp>>();
 
-
-			var result = new Dictionary<string, ReductionData<T>>();
-			Parallel.ForEach(new List<JObject>(), () => new Dictionary<string, ReductionData<T>>(),
-				(record, loopControl, localDictionary) =>
-				{
-					return localDictionary;
-				},
+			Parallel.ForEach(logLines.Documents, () => new Dictionary<string, ReductionResultData<TOut, THelp>>(),
+				(record, loopControl, localDictionary) => _reductionStructure.Reducer(record, localDictionary),
 				(localDictionary) =>
 				{
-					lock(result)
+					lock(_result)
 					{
-
+						_reductionStructure.Combiner(_result, localDictionary);
 					}
 				});
 
-			//Save result
+			
+			foreach(var reductionResultData in _result)
+			{
+				_client.Index(reductionResultData.Value, _indexName, GetType().Name, reductionResultData.Key);
+			}
+			_client.Flush();
 
+			SetNewPeriod(_reductionStructure.Settings);
+		}
+
+		private void SetNewPeriod(ReductionSettings settings)
+		{
 			throw new NotImplementedException();
+		}
+
+		private ReductionPeriod LoadPeriod(ReductionSettings settings)
+		{
+			//GetFromStorage
+			//GetFromSetttings
+			//Calculate Start/FromDate
+
+			return null;
 		}
 
 		public void Stop()
