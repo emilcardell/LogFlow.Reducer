@@ -25,7 +25,7 @@ namespace LogFlow.Reducer
 					});
 
 					x.RunAsLocalSystem();
-					x.SetDescription("Fluently map reduces elasticsearch log entries in time series");
+					x.SetDescription("Fluently reduces elasticsearch log entries in time series");
 					x.SetDisplayName("LogFlow.MapReducer");
 					x.SetServiceName("LogFlow.MapReducer");
 				});

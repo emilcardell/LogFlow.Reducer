@@ -9,7 +9,7 @@ namespace LogFlow.Reducer
 			TimeInterval = TimeInterval.Day;
 			Host = "localhost";
 			Port = 9200;
-			IndexNameFormat = @"\R\e\d\u\c\t\t\i\o\n\";
+			IndexName = @"Reductions";
 			ConnectionLimit = 5;
 		}
 		public TimeInterval TimeInterval { get; set; }
@@ -19,7 +19,7 @@ namespace LogFlow.Reducer
 		public int Port { get; set; }
 		public string Ttl { get; set; }
 		public int ConnectionLimit { get; set; }
-		public string IndexNameFormat { get; set; }
+		public string IndexName { get; set; }
 
 	}
 }

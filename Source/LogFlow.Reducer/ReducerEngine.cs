@@ -10,7 +10,7 @@ namespace LogFlow.Reducer
 	public class ReducerEngine
 	{
 		private static readonly Logger Log = LogManager.GetCurrentClassLogger();
-		private static ReductionBuilder reductionBuilder = new ReductionBuilder();
+		private static readonly ReductionBuilder ReductionBuilder = new ReductionBuilder();
 
 		public bool Start()
 		{
@@ -34,7 +34,8 @@ namespace LogFlow.Reducer
 				try
 				{
 					var reduction = (IReduction)Activator.CreateInstance(reductionType);
-					reductionBuilder.BuildAndRegisterReduction(reduction);
+					ReductionBuilder.BuildAndRegisterReduction(reduction);
+                    Log.Info(reduction.GetType().Name + " is registered.");
 				}
 				catch(Exception exception)
 				{
@@ -42,7 +43,7 @@ namespace LogFlow.Reducer
 				}
 			}
 
-			Task.WaitAll(reductionBuilder.Reductions.Select(x => Task.Run(() => x.Start())).ToArray());
+			Task.WaitAll(ReductionBuilder.Reductions.Select(x => Task.Run(() => x.Start())).ToArray());
 
 			//if(Config.EnableNancyHealthModule)
 			//{
@@ -58,7 +59,8 @@ namespace LogFlow.Reducer
 
 		public bool Stop()
 		{
-			return true;
+            Task.WaitAll(ReductionBuilder.Reductions.Select(x => Task.Run(() => x.Stop())).ToArray());
+		    return true;
 		}
 
 	}
