@@ -35,7 +35,7 @@ namespace LogFlow.Reducer
 				{
 					var reduction = (IReduction)Activator.CreateInstance(reductionType);
 					ReductionBuilder.BuildAndRegisterReduction(reduction);
-                    Log.Info(reduction.GetType().Name + " is registered.");
+					Log.Info(reduction.GetType().Name + " is registered.");
 				}
 				catch(Exception exception)
 				{
@@ -59,8 +59,8 @@ namespace LogFlow.Reducer
 
 		public bool Stop()
 		{
-            Task.WaitAll(ReductionBuilder.Reductions.Select(x => Task.Run(() => x.Stop())).ToArray());
-		    return true;
+			Task.WaitAll(ReductionBuilder.Reductions.Select(x => Task.Run(() => x.Stop())).ToArray());
+			return true;
 		}
 
 	}

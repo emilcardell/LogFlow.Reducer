@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using Nest;
@@ -49,8 +50,8 @@ namespace LogFlow.Reducer
 			{
 				try
 				{
-					ExecutePeriod();
 					_tokenSource.Token.ThrowIfCancellationRequested();
+					ExecutePeriod();
 				}
 				catch (OperationCanceledException)
 				{
@@ -68,6 +69,7 @@ namespace LogFlow.Reducer
 						Log.Warn(string.Format("{0}: {1}", GetType().Name, ex));
 						Log.Warn(string.Format("{0}: Retrying {1} times.", GetType().Name, retriedTimes));
 						Thread.Sleep(TimeSpan.FromSeconds(10));
+						_tokenSource.Token.ThrowIfCancellationRequested();
 						continue;
 					}
 
@@ -94,12 +96,15 @@ namespace LogFlow.Reducer
 				new ConnectionSettings(
 					new Uri(string.Format("http://{0}:{1}", _reductionStructure.Settings.Host,
 										  _reductionStructure.Settings.Port)));
+			clientSettings.SetDefaultIndex("_all");
 			_client = new ElasticClient(clientSettings);
+			
 
 			ReductionPeriod period = LoadPeriod(_reductionStructure.Settings);
 
+			Log.Trace("Search type:" + typeof(TIn).Name);
 			var logLines = _client.Search<TIn>(
-				s => s.Skip(0).Take(int.MaxValue).Query(q =>
+				s => s.Skip(0).Take(10000).Query(q =>
 											  q.Range(r =>
 													  r.OnField(ElasticSearchFields.Timestamp)
 													   .From(period.From)
@@ -107,14 +112,20 @@ namespace LogFlow.Reducer
 													   .ToExclusive()
 												  )));
 
+			Log.Trace(logLines.Documents.Count() + " log entries found between" + period.From.ToString("yyyy-MM-dd") + " and " + period.To.ToString("yyyy-MM-dd"));
 
 			var result = new Dictionary<string, ReductionResultData<TOut, THelp>>();
 
 			Parallel.ForEach(logLines.Documents, () => new Dictionary<string, ReductionResultData<TOut, THelp>>(),
-							 (record, loopControl, localDictionary) =>
-							 _reductionStructure.Reducer(record, localDictionary),
+				(record, loopControl, localDictionary) =>
+				{
+					_tokenSource.Token.ThrowIfCancellationRequested();
+					return _reductionStructure.Reducer(record, localDictionary);
+				}
+							 ,
 							 (localDictionary) =>
 								 {
+									 _tokenSource.Token.ThrowIfCancellationRequested();
 									 lock (result)
 									 {
 										 _reductionStructure.Combiner(result, localDictionary);
@@ -123,16 +134,24 @@ namespace LogFlow.Reducer
 			
 			EnsureIndexExists(_reductionStructure.Settings.IndexName);
 
+			Log.Trace(
+
 			foreach (var reductionResultData in result)
 			{
 				_client.Index(reductionResultData.Value, _indexName, GetType().Name, reductionResultData.Key);
+				_client.Flush();
 			}
-			_client.Flush();
 
+
+			if(period.IsCurrent)
+			{
+				Thread.Sleep(TimeSpan.FromSeconds(60));
+				return;
+			}
+				
 			SetNewPeriod(_reductionStructure.Settings, period);
 
-			if (period.IsCurrent)
-				Thread.Sleep(TimeSpan.FromSeconds(60));
+
 
 		}
 
@@ -146,22 +165,26 @@ namespace LogFlow.Reducer
 		private ReductionPeriod LoadPeriod(ReductionSettings settings)
 		{
 			var storageKey = GetPositionStorageKey(settings);
-			var startDate = DateTime.UtcNow.AddDays(-30);
+			DateTime? startDate;
 
 			try
 			{
-				startDate = _storage.Get<DateTime>(storageKey);
+				startDate = _storage.Get<DateTime?>(storageKey);
+				Log.Trace("Loaded start date from storage: " + startDate);
 			}
 			catch (Exception)
 			{
 				startDate = settings.StartDate;
 			}
 
+			if(startDate == null)
+				startDate =  DateTime.UtcNow.AddDays(-30);
+
 			var result = new ReductionPeriod();
 
-			result.From = new DateTime(startDate.Year, startDate.Month, startDate.Day, 0, 0, 0, 0);
+			result.From = new DateTime(startDate.Value.Year, startDate.Value.Month, startDate.Value.Day, 0, 0, 0, 0);
 			result.To = result.From.AddDays(1);
-			result.IsCurrent = startDate.Date == DateTime.UtcNow.Date;
+			result.IsCurrent = startDate.Value.Date == DateTime.UtcNow.Date;
 
 			return result;
 		}
@@ -202,6 +225,8 @@ namespace LogFlow.Reducer
 
 		private void CreateIndex(string indexName)
 		{
+			indexName = indexName.ToLowerInvariant();
+
 			if(_client.IndexExists(indexName).Exists)
 				return;
 

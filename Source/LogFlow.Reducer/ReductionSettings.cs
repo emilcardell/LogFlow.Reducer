@@ -9,7 +9,7 @@ namespace LogFlow.Reducer
 			TimeInterval = TimeInterval.Day;
 			Host = "localhost";
 			Port = 9200;
-			IndexName = @"Reductions";
+			IndexName = "LogFlowReducer";
 			ConnectionLimit = 5;
 		}
 		public TimeInterval TimeInterval { get; set; }
