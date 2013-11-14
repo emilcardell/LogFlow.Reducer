@@ -90,6 +90,7 @@ namespace LogFlow.Reducer
 			}
 		}
 
+		private const int NumberOfDocumentsPerRead = 10000;
 		private void ExecutePeriod()
 		{
 			var clientSettings =
@@ -103,20 +104,32 @@ namespace LogFlow.Reducer
 			ReductionPeriod period = LoadPeriod(_reductionStructure.Settings);
 
 			Log.Trace("Search type:" + typeof(TIn).Name);
-			var logLines = _client.Search<TIn>(
-				s => s.Skip(0).Take(10000).Query(q =>
+			var totalLogLines = new List<TIn>();
+			var position = 0;
+			while (true)
+			{
+				int currentPosition = position;
+				var logLines = _client.Search<TIn>(
+				s => s.Skip(currentPosition).Take(NumberOfDocumentsPerRead).Query(q =>
 											  q.Range(r =>
 													  r.OnField(ElasticSearchFields.Timestamp)
 													   .From(period.From)
 													   .To(period.To)
 													   .ToExclusive()
 												  )));
+				totalLogLines.AddRange(logLines.Documents);
 
-			Log.Trace(logLines.Documents.Count() + " log entries found between" + period.From.ToString("yyyy-MM-dd") + " and " + period.To.ToString("yyyy-MM-dd"));
+				if (logLines.Total == totalLogLines.Count)
+					break;
+
+				position += logLines.Documents.Count();
+			}
+
+			Log.Trace(totalLogLines.Count() + " log entries found between" + period.From.ToString("yyyy-MM-dd") + " and " + period.To.ToString("yyyy-MM-dd"));
 
 			var result = new Dictionary<string, ReductionResultData<TOut, THelp>>();
 
-			Parallel.ForEach(logLines.Documents, () => new Dictionary<string, ReductionResultData<TOut, THelp>>(),
+			Parallel.ForEach(totalLogLines, () => new Dictionary<string, ReductionResultData<TOut, THelp>>(),
 				(record, loopControl, localDictionary) =>
 				{
 					_tokenSource.Token.ThrowIfCancellationRequested();
@@ -134,8 +147,7 @@ namespace LogFlow.Reducer
 			
 			EnsureIndexExists(_reductionStructure.Settings.IndexName);
 
-			Log.Trace(
-
+			
 			foreach (var reductionResultData in result)
 			{
 				_client.Index(reductionResultData.Value, _indexName, GetType().Name, reductionResultData.Key);

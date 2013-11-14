@@ -12,7 +12,7 @@ namespace LogFlow.Reducer.Example
 			CreateReduction()
 				.ReduceIntputWith((inputData, result) =>
 			{
-				foreach (var parameter in inputData.Parameters)
+				foreach (var parameter in inputData.TagKeys)
 				{
 					var id = parameter + "_" + inputData.TimeStamp.ToString("yyyy-MM-dd");
 					if(result.ContainsKey(id))
@@ -21,13 +21,12 @@ namespace LogFlow.Reducer.Example
 							continue;
 
 						result[id].Helper.UserNames.Add(inputData.User);
-
 						result[id].Output.NumberOfUniqeUsers = result[id].Helper.UserNames.Count;
 					}
 					else
 					{
 						var resultData = new ReductionResultData<ReducedEvent, Helper>();
-						resultData.Output = new ReducedEvent() { NumberOfUniqeUsers = 1, Parameter = parameter, TimeStamp = inputData.TimeStamp.Date };
+						resultData.Output = new ReducedEvent() { NumberOfUniqeUsers = 1, TagKey = parameter, TimeStamp = inputData.TimeStamp.Date };
 						resultData.Helper = new Helper() { UserNames = new List<string>()};
 						resultData.Helper.UserNames.Add(inputData.User);
 						result.Add(id, resultData);
@@ -63,9 +62,11 @@ namespace LogFlow.Reducer.Example
 	[ElasticType(Name = "SearchEvent")]
 	public class SearchEvent
 	{
+		[JsonProperty("_id")]
+		public string Id { get; set; }
 		[JsonProperty("@timestamp")]
 		public DateTime TimeStamp { get; set; }
-		public List<string> Parameters { get; set; }
+		public List<string> TagKeys { get; set; }
 		public string User { get; set; }
 	}
 
@@ -73,7 +74,7 @@ namespace LogFlow.Reducer.Example
 	{
 		[JsonProperty("@timestamp")]
 		public DateTime TimeStamp { get; set; }
-		public string Parameter { get; set; }
+		public string TagKey { get; set; }
 		public int NumberOfUniqeUsers { get; set; }
 	}
 
